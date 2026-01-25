@@ -23,7 +23,7 @@ A **beautiful, secure, and fully functional contact form** with database integra
 
 | Contact Form                                                                       | Success Page                                                                        | Submissions Dashboard                                                             |
 | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| ![](https://via.placeholder.com/400x250/3498db/ffffff?text=Beautiful+Contact+Form) | ![](https://via.placeholder.com/400x250/2ecc71/ffffff?text=Thank+You!+Success+Page) | ![](https://via.placeholder.com/400x250/9b59b6/ffffff?text=All+Submissions+Table) |
+| ![](screenshots/contact-form.png) | ![](screenshots/success-page.png) | ![](screenshots/submissions-dashboard.png) |
 
 ---
 
