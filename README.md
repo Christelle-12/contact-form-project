@@ -21,7 +21,7 @@ A **beautiful, secure, and fully functional contact form** with database integra
 
 ## 🖼️ Screenshots
 
-<img src="./screenshots/contact-form.png" width="250" />
+<img src="./screenshots/contact-form.PNG" width="250" />
 <img src="./screenshots/submission-dashboard.PNG" width="300" />
 <img src="./screenshots/success-page.PNG" width="200" />
 
