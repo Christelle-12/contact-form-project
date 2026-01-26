@@ -2,7 +2,7 @@
 
 A **beautiful, secure, and fully functional contact form** with database integration, designed for real-world use. This project demonstrates clean UI design, client-side validation, and reliable server-side processing using PHP and MySQL.
 
-🔗 **Live Demo** · 📸 **Screenshots** · ⚡ **Quick Start**
+🔗 **[Live Demo](https://your-live-demo-link.com)**· ⚡ **Quick Start**
 
 ---
 
@@ -21,9 +21,11 @@ A **beautiful, secure, and fully functional contact form** with database integra
 
 ## 🖼️ Screenshots
 
-| Contact Form                                                                       | Success Page                                                                        | Submissions Dashboard                                                             |
-| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| ![](https://via.placeholder.com/400x250/3498db/ffffff?text=Beautiful+Contact+Form) | ![](https://via.placeholder.com/400x250/2ecc71/ffffff?text=Thank+You!+Success+Page) | ![](https://via.placeholder.com/400x250/9b59b6/ffffff?text=All+Submissions+Table) |
+📸 **[View all screenshots](./screenshots/)**
+
+<img src="./screenshots/contact-form.png" width="300" />
+<img src="./screenshots/submission-dashboard.PNG" width="300" />
+<img src="./screenshots/success-page.PNG" width="300" />
 
 ---
 
@@ -181,7 +183,7 @@ Then update `process.php` and the database schema accordingly.
 
 ## 👩‍💻 About the Developer
 
-**Christelle**
+**Nirere Christelle**
 Building practical, user-friendly web solutions with clean and maintainable code.
 
 📧 Email: [mariechristellenirere@gmail.com](mailto:mariechristellenirere@gmail.com)
