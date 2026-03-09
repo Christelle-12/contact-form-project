@@ -220,3 +220,11 @@ select:focus {
     background-color: white;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
+.motto{
+font-size:15px;
+color:#6c757d;
+text-align:center;
+margin-top:-10px;
+margin-bottom:25px;
+font-style:italic;
+}
