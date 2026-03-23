@@ -15,7 +15,10 @@ $isError = $status === 'error';
     <main class="public-shell">
         <section class="hero-card">
             <div class="hero-copy">
-                <span class="eyebrow">Church Care Desk</span>
+                <div class="hero-topbar">
+                    <span class="eyebrow">Church Care Desk</span>
+                    <a href="login.php" class="secondary-btn compact-btn">Admin Login</a>
+                </div>
                 <h1>Share a prayer request, suggestion, or private note.</h1>
                 <p class="lead">
                     This simple form helps church attendees send messages to the admin team.
@@ -68,10 +71,11 @@ $isError = $status === 'error';
 
                     <div class="field-group">
                         <label for="messageInput">Message <span>Required</span></label>
-                        <textarea id="messageInput" name="message" rows="6" maxlength="5000" placeholder="Write your message, prayer request, or suggestion here..." required></textarea>
+                        <textarea id="messageInput" name="message" rows="5" maxlength="5000" placeholder="Write your message, prayer request, or suggestion here..." required></textarea>
                     </div>
 
                     <button type="submit" class="primary-btn">Send Message</button>
+                    <a href="login.php" class="inline-link">Go to admin login</a>
                     <div id="message" class="alert error" hidden></div>
                 </form>
             </div>

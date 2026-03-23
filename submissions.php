@@ -8,17 +8,6 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once 'db.php';
 
-if (isset($_GET['delete'])) {
-    $id = (int) $_GET['delete'];
-    $stmt = $conn->prepare('DELETE FROM messages WHERE id = ?');
-    $stmt->bind_param('i', $id);
-    $stmt->execute();
-    $stmt->close();
-
-    header('Location: submissions.php');
-    exit();
-}
-
 $search = trim($_GET['search'] ?? '');
 
 if ($search !== '') {
@@ -67,7 +56,7 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                     <span>Total messages</span>
                     <strong><?= (int) $messageCount ?></strong>
                 </div>
-                <a href="logout.php" class="secondary-btn">Logout</a>
+                <a href="logout.php" class="secondary-btn compact-btn">Logout</a>
             </div>
         </header>
 
@@ -79,49 +68,157 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                     value="<?= htmlspecialchars($search) ?>"
                     placeholder="Search name, phone, role, or message"
                 >
-                <button type="submit" class="primary-btn">Search</button>
+                <button type="submit" class="primary-btn compact-btn">Search</button>
                 <?php if ($search !== ''): ?>
-                    <a href="submissions.php" class="secondary-btn">Clear</a>
+                    <a href="submissions.php" class="secondary-btn compact-btn">Clear</a>
                 <?php endif; ?>
             </form>
         </section>
 
-        <section class="messages-grid">
+        <section class="table-card">
             <?php if ($result->num_rows === 0): ?>
-                <article class="message-card empty-state">
+                <div class="empty-state">
                     <h2>No messages found</h2>
                     <p>When attendees submit the form, their messages will appear here.</p>
-                </article>
+                </div>
+            <?php else: ?>
+                <div class="table-scroll">
+                    <table class="messages-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Phone</th>
+                                <th scope="col">Preview</th>
+                                <th scope="col">Date</th>
+                                <th scope="col" class="actions-col">View</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php while ($row = $result->fetch_assoc()): ?>
+                                <?php
+                                $fullName = $row['full_name'] ?: 'Anonymous attendee';
+                                $telephone = $row['telephone'] ?: 'Not provided';
+                                $memberVisitor = $row['member_visitor'] ?: 'Unspecified';
+                                $preview = mb_strimwidth($row['message'], 0, 70, '...');
+                                ?>
+                                <tr>
+                                    <td data-label="Name">
+                                        <div class="table-primary"><?= htmlspecialchars($fullName) ?></div>
+                                    </td>
+                                    <td data-label="Type">
+                                        <span class="badge"><?= htmlspecialchars($memberVisitor) ?></span>
+                                    </td>
+                                    <td data-label="Phone"><?= htmlspecialchars($telephone) ?></td>
+                                    <td data-label="Preview" class="message-preview-cell">
+                                        <?= htmlspecialchars($preview) ?>
+                                    </td>
+                                    <td data-label="Date"><?= htmlspecialchars($row['created_at']) ?></td>
+                                    <td data-label="View" class="table-actions">
+                                        <button
+                                            type="button"
+                                            class="icon-btn"
+                                            data-open-message
+                                            data-name="<?= htmlspecialchars($fullName) ?>"
+                                            data-type="<?= htmlspecialchars($memberVisitor) ?>"
+                                            data-phone="<?= htmlspecialchars($telephone) ?>"
+                                            data-date="<?= htmlspecialchars($row['created_at']) ?>"
+                                            data-message="<?= htmlspecialchars($row['message']) ?>"
+                                            aria-label="View full message"
+                                            title="View full message"
+                                        >
+                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                <path d="M12 5c5.23 0 9.27 3.34 11 7-1.73 3.66-5.77 7-11 7S2.73 15.66 1 12c1.73-3.66 5.77-7 11-7Zm0 2C8.39 7 5.33 9.11 3.53 12 5.33 14.89 8.39 17 12 17s6.67-2.11 8.47-5C18.67 9.11 15.61 7 12 7Zm0 2.5A2.5 2.5 0 1 1 9.5 12 2.5 2.5 0 0 1 12 9.5Z"/>
+                                            </svg>
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
+                        </tbody>
+                    </table>
+                </div>
             <?php endif; ?>
-
-            <?php while ($row = $result->fetch_assoc()): ?>
-                <article class="message-card">
-                    <div class="message-card-top">
-                        <span class="badge"><?= htmlspecialchars($row['member_visitor'] ?: 'Unspecified') ?></span>
-                        <time><?= htmlspecialchars($row['created_at']) ?></time>
-                    </div>
-
-                    <h2><?= htmlspecialchars($row['full_name'] ?: 'Anonymous attendee') ?></h2>
-
-                    <?php if (!empty($row['telephone'])): ?>
-                        <p class="meta-line">Phone: <?= htmlspecialchars($row['telephone']) ?></p>
-                    <?php endif; ?>
-
-                    <p class="message-body"><?= nl2br(htmlspecialchars($row['message'])) ?></p>
-
-                    <div class="message-card-actions">
-                        <a
-                            href="submissions.php?delete=<?= (int) $row['id'] ?>"
-                            class="danger-link"
-                            onclick="return confirm('Delete this message?');"
-                        >
-                            Delete
-                        </a>
-                    </div>
-                </article>
-            <?php endwhile; ?>
         </section>
     </main>
+
+    <dialog class="message-modal" id="messageModal">
+        <div class="modal-header">
+            <div>
+                <p class="modal-kicker">Full Message</p>
+                <h2 id="modalName">Message details</h2>
+            </div>
+            <button type="button" class="icon-btn modal-close-btn" id="closeMessageModal" aria-label="Close modal">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12 19 17.6 17.6 19 12 13.4 6.4 19 5 17.6 10.6 12 5 6.4Z"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-meta-grid">
+            <div>
+                <span>Type</span>
+                <strong id="modalType">Member</strong>
+            </div>
+            <div>
+                <span>Phone</span>
+                <strong id="modalPhone">Not provided</strong>
+            </div>
+            <div>
+                <span>Received</span>
+                <strong id="modalDate"></strong>
+            </div>
+        </div>
+
+        <div class="modal-message-box">
+            <p id="modalMessage"></p>
+        </div>
+    </dialog>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const modal = document.getElementById('messageModal');
+            const closeButton = document.getElementById('closeMessageModal');
+            const openButtons = document.querySelectorAll('[data-open-message]');
+
+            if (!modal || !closeButton || openButtons.length === 0) {
+                return;
+            }
+
+            const modalName = document.getElementById('modalName');
+            const modalType = document.getElementById('modalType');
+            const modalPhone = document.getElementById('modalPhone');
+            const modalDate = document.getElementById('modalDate');
+            const modalMessage = document.getElementById('modalMessage');
+
+            openButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    modalName.textContent = button.dataset.name || 'Anonymous attendee';
+                    modalType.textContent = button.dataset.type || 'Unspecified';
+                    modalPhone.textContent = button.dataset.phone || 'Not provided';
+                    modalDate.textContent = button.dataset.date || '';
+                    modalMessage.textContent = button.dataset.message || '';
+                    modal.showModal();
+                });
+            });
+
+            closeButton.addEventListener('click', function () {
+                modal.close();
+            });
+
+            modal.addEventListener('click', function (event) {
+                const bounds = modal.getBoundingClientRect();
+                const isOutside =
+                    event.clientX < bounds.left ||
+                    event.clientX > bounds.right ||
+                    event.clientY < bounds.top ||
+                    event.clientY > bounds.bottom;
+
+                if (isOutside) {
+                    modal.close();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
 <?php
