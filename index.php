@@ -1,72 +1,83 @@
+<?php
+$status = $_GET['status'] ?? '';
+$isSuccess = $status === 'success';
+$isError = $status === 'error';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FGT Torun prayer form</title>
+    <title>Church Message Desk</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
-    <div class="container">
-        <h2>Prayer Changes Everything</h2>
-          <p class="motto">“The prayer of a righteous person is powerful and effective.” — James 5:16.</p>
-        <form id="churchForm" action="process.php" method="POST">
-            
-            <!-- Personal Info -->
-            <div class="form-group">
-                <label for="full_name">Full Name:</label>
-                <input type="text" id="full_name" name="full_name" required placeholder="Enter your full name" minlength="2">
+<body class="public-page">
+    <main class="public-shell">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <span class="eyebrow">Church Care Desk</span>
+                <h1>Share a prayer request, suggestion, or private note.</h1>
+                <p class="lead">
+                    This simple form helps church attendees send messages to the admin team.
+                    Only your message and whether you are a member or visitor are required.
+                </p>
+                <div class="hero-quote">
+                    "Carry each other's burdens, and in this way you will fulfill the law of Christ."
+                    <span>Galatians 6:2</span>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required placeholder="Enter your email">
-            </div>
+            <div class="form-card">
+                <div class="form-card-header">
+                    <h2>Send a Message</h2>
+                    <p>We read every message with care.</p>
+                </div>
 
-            <div class="form-group">
-                <label for="telephone">Telephone:</label>
-                <input type="tel" id="telephone" name="telephone" placeholder="Enter your phone number" pattern="[0-9]{8,15}">
-            </div>
+                <?php if ($isSuccess): ?>
+                    <div class="alert success">Your message was received successfully.</div>
+                <?php elseif ($isError): ?>
+                    <div class="alert error">We could not send your message. Please try again.</div>
+                <?php endif; ?>
 
-            <div class="form-group">
-                <label for="address">Address:</label>
-                <input type="text" id="address" name="address" placeholder="Enter your address">
-            </div>
+                <form id="churchForm" action="process.php" method="POST" novalidate>
+                    <div class="field-group">
+                        <label for="full_name">Full name <span>Optional</span></label>
+                        <input type="text" id="full_name" name="full_name" maxlength="100" placeholder="Your name">
+                    </div>
 
-            <div class="form-group">
-                <label for="age">Age:</label>
-                <input type="number" id="age" name="age" min="0" placeholder="Enter your age">
-            </div>
+                    <div class="field-group">
+                        <label for="telephone">Telephone <span>Optional</span></label>
+                        <input type="tel" id="telephone" name="telephone" maxlength="20" placeholder="Phone number">
+                    </div>
 
-            <div class="form-group">
-                <label for="gender">Gender:</label>
-                <select id="gender" name="gender">
-                    <option value="">Select</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                </select>
-            </div>
+                    <fieldset class="choice-group">
+                        <legend>Are you a member or visitor? <span>Required</span></legend>
+                        <label class="choice-pill">
+                            <input type="radio" name="member_visitor" value="Member" checked>
+                            <span>Member</span>
+                        </label>
+                        <label class="choice-pill">
+                            <input type="radio" name="member_visitor" value="Visitor">
+                            <span>Visitor</span>
+                        </label>
+                        <label class="choice-pill">
+                            <input type="radio" name="member_visitor" value="Other">
+                            <span>Other</span>
+                        </label>
+                    </fieldset>
 
-            <!-- Membership Info -->
-            <div class="form-group">
-                <label>Member or Visitor:</label><br>
-                <input type="radio" name="member_visitor" value="Member" checked> Member
-                <input type="radio" name="member_visitor" value="Visitor"> Visitor
-            </div>
+                    <div class="field-group">
+                        <label for="messageInput">Message <span>Required</span></label>
+                        <textarea id="messageInput" name="message" rows="6" maxlength="5000" placeholder="Write your message, prayer request, or suggestion here..." required></textarea>
+                    </div>
 
-            <!-- Prayer / Message -->
-            <div class="form-group">
-                <label for="message">Prayer Request or Message:</label>
-                <textarea id="messageInput" name="message" placeholder="Type your prayer request or message here..." required minlength="10"></textarea>
+                    <button type="submit" class="primary-btn">Send Message</button>
+                    <div id="message" class="alert error" hidden></div>
+                </form>
             </div>
+        </section>
+    </main>
 
-            <button type="submit">Submit</button>
-        </form>
-        
-        <div id="message" class="message"></div>
-    </div>
-    
     <script src="script.js"></script>
 </body>
 </html>

@@ -1,55 +1,48 @@
 <?php
-include 'db.php';
+require_once 'db.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
-$full_name = htmlspecialchars($_POST['full_name']);
-$email = htmlspecialchars($_POST['email']);
-$telephone = htmlspecialchars($_POST['telephone']);
-$address = htmlspecialchars($_POST['address']);
-$age = intval($_POST['age']);
-$gender = htmlspecialchars($_POST['gender']);
-$member_visitor = htmlspecialchars($_POST['member_visitor']);
-$message = htmlspecialchars($_POST['message']);
-
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-die("Invalid email format");
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: index.php');
+    exit();
 }
 
-$stmt = $conn->prepare("INSERT INTO users
-(full_name,email,telephone,address,age,gender,member_visitor,message)
-VALUES (?,?,?,?,?,?,?,?)");
+$fullName = trim($_POST['full_name'] ?? '');
+$telephone = trim($_POST['telephone'] ?? '');
+$memberVisitor = trim($_POST['member_visitor'] ?? '');
+$message = trim($_POST['message'] ?? '');
 
-$stmt->bind_param(
-"ssssisss",
-$full_name,
-$email,
-$telephone,
-$address,
-$age,
-$gender,
-$member_visitor,
-$message
+$allowedTypes = ['Member', 'Visitor', 'Other'];
+$errors = [];
+
+if ($memberVisitor === '' || !in_array($memberVisitor, $allowedTypes, true)) {
+    $errors[] = 'Please choose whether you are a member, visitor, or other.';
+}
+
+if ($message === '') {
+    $errors[] = 'Message is required.';
+}
+
+if (mb_strlen($fullName) > 100) {
+    $errors[] = 'Full name is too long.';
+}
+
+if (mb_strlen($telephone) > 20) {
+    $errors[] = 'Telephone is too long.';
+}
+
+if (!empty($errors)) {
+    header('Location: index.php?status=error');
+    exit();
+}
+
+$stmt = $conn->prepare(
+    'INSERT INTO messages (full_name, telephone, member_visitor, message) VALUES (?, ?, ?, ?)'
 );
-
-if ($stmt->execute()) {
-
-header("Location: success.html");
-exit();
-
-} else {
-
-echo "Error: " . $stmt->error;
-
-}
-
+$stmt->bind_param('ssss', $fullName, $telephone, $memberVisitor, $message);
+$stmt->execute();
 $stmt->close();
 $conn->close();
 
-} else {
-
-header("Location: index.html");
+header('Location: index.php?status=success');
 exit();
-
-}
 ?>

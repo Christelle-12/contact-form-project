@@ -1,61 +1,94 @@
 <?php
-include 'db.php';
+session_start();
+require_once 'db.php';
 
-$SECRET_KEY = "CHURCH2026";
+$secretKey = 'CHURCH2026';
+$error = '';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $adminKey = trim($_POST['admin_key'] ?? '');
+    $username = trim($_POST['username'] ?? '');
+    $password = trim($_POST['password'] ?? '');
 
-    if ($_POST['admin_key'] !== $SECRET_KEY) {
-        $error = "Invalid admin key.";
+    if ($adminKey !== $secretKey) {
+        $error = 'The admin setup key is not correct.';
+    } elseif ($username === '' || $password === '') {
+        $error = 'Username and password are required.';
     } else {
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-        $username = trim($_POST['username']);
-        $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT);
+        try {
+            $stmt = $conn->prepare('INSERT INTO admins (username, password) VALUES (?, ?)');
+            $stmt->bind_param('ss', $username, $hashedPassword);
+            $stmt->execute();
+            $stmt->close();
+            $conn->close();
 
-        $stmt = $conn->prepare("INSERT INTO admins (username, password) VALUES (?, ?)");
-        $stmt->bind_param("ss", $username, $password);
-
-        if ($stmt->execute()) {
-            header("Location: login.php?registered=1");
+            header('Location: login.php?registered=1');
             exit();
-        } else {
-            $error = "Username already exists.";
+        } catch (mysqli_sql_exception $exception) {
+            $error = 'That username is already in use.';
         }
-
-        $stmt->close();
     }
-
-    $conn->close();
 }
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Admin Registration</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Admin</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="auth-page">
+    <main class="auth-shell">
+        <section class="auth-panel auth-panel-copy">
+            <span class="eyebrow">Admin Access</span>
+            <h1>Set up a trusted account for message review.</h1>
+            <p>
+                Admin accounts can sign in and view attendee messages from one simple dashboard.
+                Use the registration key once, then manage messages securely from the login page.
+            </p>
+            <ul class="feature-list">
+                <li>Clean admin-only access</li>
+                <li>Messages sorted by newest first</li>
+                <li>Built around the new `admins` and `messages` tables</li>
+            </ul>
+        </section>
 
-<h2>Admin Registration</h2>
+        <section class="auth-panel auth-panel-form">
+            <div class="auth-card-header">
+                <h2>Create Admin Account</h2>
+                <p>Register an account for church staff or leadership.</p>
+            </div>
 
-<?php if(isset($error)) echo "<p style='color:red;'>$error</p>"; ?>
+            <?php if ($error !== ''): ?>
+                <div class="alert error"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
 
-<form method="POST">
+            <form method="POST" class="auth-form">
+                <div class="field-group">
+                    <label for="admin_key">Admin setup key</label>
+                    <input type="password" id="admin_key" name="admin_key" required>
+                </div>
 
-Admin Secret Key:<br>
-<input type="password" name="admin_key" required><br><br>
+                <div class="field-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" maxlength="100" required>
+                </div>
 
-Username:<br>
-<input type="text" name="username" required><br><br>
+                <div class="field-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
 
-Password:<br>
-<input type="password" name="password" required><br><br>
+                <button type="submit" class="primary-btn">Create Account</button>
+            </form>
 
-<button type="submit">Register</button>
-
-</form>
-
-<p><a href="login.php">Login here</a></p>
-
+            <p class="auth-footer-link">
+                Already have an account? <a href="login.php">Sign in here</a>.
+            </p>
+        </section>
+    </main>
 </body>
 </html>

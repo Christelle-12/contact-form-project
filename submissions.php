@@ -2,112 +2,131 @@
 session_start();
 
 if (!isset($_SESSION['admin_id'])) {
-    header("Location: login.php");
+    header('Location: login.php');
     exit();
 }
 
-include 'db.php';
+require_once 'db.php';
 
 if (isset($_GET['delete'])) {
+    $id = (int) $_GET['delete'];
+    $stmt = $conn->prepare('DELETE FROM messages WHERE id = ?');
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    $stmt->close();
 
-$id = intval($_GET['delete']);
-
-$stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
-$stmt->bind_param("i",$id);
-$stmt->execute();
-$stmt->close();
-
-header("Location: submissions.php");
-exit();
+    header('Location: submissions.php');
+    exit();
 }
 
-$search = "";
+$search = trim($_GET['search'] ?? '');
 
-if(isset($_GET['search']) && !empty($_GET['search'])){
-
-$search = $_GET['search'];
-
-$stmt = $conn->prepare("SELECT * FROM users
-WHERE full_name LIKE ? OR email LIKE ?
-ORDER BY created_at DESC");
-
-$search_param = "%$search%";
-
-$stmt->bind_param("ss",$search_param,$search_param);
-$stmt->execute();
-
-$result = $stmt->get_result();
-
-}else{
-
-$result = $conn->query("SELECT * FROM users ORDER BY created_at DESC");
-
+if ($search !== '') {
+    $searchTerm = '%' . $search . '%';
+    $stmt = $conn->prepare(
+        'SELECT id, full_name, telephone, member_visitor, message, created_at
+         FROM messages
+         WHERE full_name LIKE ? OR telephone LIKE ? OR message LIKE ? OR member_visitor LIKE ?
+         ORDER BY created_at DESC'
+    );
+    $stmt->bind_param('ssss', $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    $result = $conn->query(
+        'SELECT id, full_name, telephone, member_visitor, message, created_at
+         FROM messages
+         ORDER BY created_at DESC'
+    );
 }
+
+$messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_assoc()['total'] ?? 0;
 ?>
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Admin Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Dashboard</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="dashboard-page">
+    <main class="dashboard-shell">
+        <header class="dashboard-header">
+            <div>
+                <span class="eyebrow">Admin Dashboard</span>
+                <h1>Attendee Messages</h1>
+                <p>
+                    Welcome, <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>.
+                    Review the latest messages from members and visitors below.
+                </p>
+            </div>
 
-<h2>Form Submissions</h2>
+            <div class="dashboard-actions">
+                <div class="stat-card">
+                    <span>Total messages</span>
+                    <strong><?= (int) $messageCount ?></strong>
+                </div>
+                <a href="logout.php" class="secondary-btn">Logout</a>
+            </div>
+        </header>
 
-<a href="logout.php">Logout</a>
+        <section class="toolbar-card">
+            <form method="GET" class="search-form">
+                <input
+                    type="text"
+                    name="search"
+                    value="<?= htmlspecialchars($search) ?>"
+                    placeholder="Search name, phone, role, or message"
+                >
+                <button type="submit" class="primary-btn">Search</button>
+                <?php if ($search !== ''): ?>
+                    <a href="submissions.php" class="secondary-btn">Clear</a>
+                <?php endif; ?>
+            </form>
+        </section>
 
-<br><br>
+        <section class="messages-grid">
+            <?php if ($result->num_rows === 0): ?>
+                <article class="message-card empty-state">
+                    <h2>No messages found</h2>
+                    <p>When attendees submit the form, their messages will appear here.</p>
+                </article>
+            <?php endif; ?>
 
-<form method="GET">
+            <?php while ($row = $result->fetch_assoc()): ?>
+                <article class="message-card">
+                    <div class="message-card-top">
+                        <span class="badge"><?= htmlspecialchars($row['member_visitor'] ?: 'Unspecified') ?></span>
+                        <time><?= htmlspecialchars($row['created_at']) ?></time>
+                    </div>
 
-<input type="text" name="search" placeholder="Search by name or email" value="<?= htmlspecialchars($search) ?>">
+                    <h2><?= htmlspecialchars($row['full_name'] ?: 'Anonymous attendee') ?></h2>
 
-<button type="submit">Search</button>
+                    <?php if (!empty($row['telephone'])): ?>
+                        <p class="meta-line">Phone: <?= htmlspecialchars($row['telephone']) ?></p>
+                    <?php endif; ?>
 
-</form>
+                    <p class="message-body"><?= nl2br(htmlspecialchars($row['message'])) ?></p>
 
-<br>
-
-<table border="1" cellpadding="10">
-
-<tr>
-<th>ID</th>
-<th>Name</th>
-<th>Email</th>
-<th>Telephone</th>
-<th>Address</th>
-<th>Age</th>
-<th>Gender</th>
-<th>Member</th>
-<th>Message</th>
-<th>Date</th>
-<th>Action</th>
-</tr>
-
-<?php while($row = $result->fetch_assoc()): ?>
-
-<tr>
-
-<td><?= $row['id'] ?></td>
-<td><?= htmlspecialchars($row['full_name']) ?></td>
-<td><?= htmlspecialchars($row['email']) ?></td>
-<td><?= htmlspecialchars($row['telephone']) ?></td>
-<td><?= htmlspecialchars($row['address']) ?></td>
-<td><?= htmlspecialchars($row['age']) ?></td>
-<td><?= htmlspecialchars($row['gender']) ?></td>
-<td><?= htmlspecialchars($row['member_visitor']) ?></td>
-<td><?= htmlspecialchars($row['message']) ?></td>
-<td><?= $row['created_at'] ?></td>
-
-<td>
-<a href="submissions.php?delete=<?= $row['id'] ?>" onclick="return confirm('Delete this submission?')">Delete</a>
-</td>
-
-</tr>
-
-<?php endwhile; ?>
-
-</table>
-
+                    <div class="message-card-actions">
+                        <a
+                            href="submissions.php?delete=<?= (int) $row['id'] ?>"
+                            class="danger-link"
+                            onclick="return confirm('Delete this message?');"
+                        >
+                            Delete
+                        </a>
+                    </div>
+                </article>
+            <?php endwhile; ?>
+        </section>
+    </main>
 </body>
 </html>
+<?php
+if (isset($stmt) && $stmt instanceof mysqli_stmt) {
+    $stmt->close();
+}
+$conn->close();
+?>

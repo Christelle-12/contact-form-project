@@ -1,14 +1,10 @@
 CREATE DATABASE IF NOT EXISTS webform_db;
 USE webform_db;
 
-CREATE TABLE users (
+CREATE TABLE messages (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  full_name VARCHAR(100) NOT NULL,
-  email VARCHAR(100) NOT NULL,
+  full_name VARCHAR(100) NULL,
   telephone VARCHAR(20),
-  address VARCHAR(255),
-  age INT,
-  gender VARCHAR(10),
   member_visitor VARCHAR(10),
   message TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
