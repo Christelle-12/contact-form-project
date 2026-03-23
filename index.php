@@ -75,7 +75,7 @@ $isError = $status === 'error';
                     </div>
 
                     <button type="submit" class="primary-btn">Send Message</button>
-                    <a href="login.php" class="inline-link">Go to admin login</a>
+                    
                     <div id="message" class="alert error" hidden></div>
                 </form>
             </div>

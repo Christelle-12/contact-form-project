@@ -89,6 +89,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <p class="auth-footer-link">
                 Need to create the first admin? <a href="admin_register.php">Register here</a>.
             </p>
+            <p class="auth-footer-link">
+                <a href="index.php">Back to message form</a>
+            </p>
         </section>
     </main>
 </body>
