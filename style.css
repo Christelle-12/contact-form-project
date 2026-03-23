@@ -421,10 +421,13 @@ textarea {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 .search-form input {
     flex: 1 1 260px;
+    min-height: 38px;
+    padding: 10px 12px;
 }
 
 .table-scroll {
@@ -684,6 +687,13 @@ textarea {
 
     .search-form {
         flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .search-form input {
+        min-height: 36px;
+        padding: 9px 11px;
     }
 
     .hero-topbar {
