@@ -692,6 +692,8 @@ textarea {
     }
 
     .search-form input {
+        flex: 0 0 auto;
+        width: 100%;
         min-height: 36px;
         padding: 9px 11px;
     }
