@@ -22,6 +22,7 @@ $flash = $_GET['status'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $messageId = (int) ($_POST['message_id'] ?? 0);
     $action = $_POST['action'] ?? '';
+    $isArchivedAction = (int) ($_POST['is_archived'] ?? 0);
     $redirectView = $_POST['view'] ?? 'active';
     $redirectView = in_array($redirectView, $allowedViews, true) ? $redirectView : 'active';
     $redirectSearch = trim($_POST['search'] ?? '');
@@ -33,22 +34,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($messageId > 0) {
         if ($action === 'archive') {
-            $stmt = $conn->prepare('UPDATE messages SET is_archived = 1, archived_at = CURRENT_TIMESTAMP WHERE id = ?');
+            $stmt = $conn->prepare('SELECT full_name, telephone, member_visitor, message, created_at FROM messages WHERE id = ?');
             $stmt->bind_param('i', $messageId);
             $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($row = $result->fetch_assoc()) {
+                $insert = $conn->prepare('INSERT INTO archived_messages (full_name, telephone, member_visitor, message, archived_at, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)');
+                $insert->bind_param('sssss', $row['full_name'], $row['telephone'], $row['member_visitor'], $row['message'], $row['created_at']);
+                $insert->execute();
+                $insert->close();
+
+                $delete = $conn->prepare('DELETE FROM messages WHERE id = ?');
+                $delete->bind_param('i', $messageId);
+                $delete->execute();
+                $delete->close();
+
+                $redirectParams['status'] = 'archived';
+            }
+
             $stmt->close();
-            $redirectParams['status'] = 'archived';
         } elseif ($action === 'restore') {
-            $stmt = $conn->prepare('UPDATE messages SET is_archived = 0, archived_at = NULL WHERE id = ?');
+            $stmt = $conn->prepare('SELECT full_name, telephone, member_visitor, message, created_at FROM archived_messages WHERE id = ?');
             $stmt->bind_param('i', $messageId);
             $stmt->execute();
+            $result = $stmt->get_result();
+
+            if ($row = $result->fetch_assoc()) {
+                $insert = $conn->prepare('INSERT INTO messages (full_name, telephone, member_visitor, message, created_at) VALUES (?, ?, ?, ?, ?)');
+                $insert->bind_param('sssss', $row['full_name'], $row['telephone'], $row['member_visitor'], $row['message'], $row['created_at']);
+                $insert->execute();
+                $insert->close();
+
+                $delete = $conn->prepare('DELETE FROM archived_messages WHERE id = ?');
+                $delete->bind_param('i', $messageId);
+                $delete->execute();
+                $delete->close();
+
+                $redirectParams['status'] = 'restored';
+            }
+
             $stmt->close();
-            $redirectParams['status'] = 'restored';
         } elseif ($action === 'delete') {
-            $stmt = $conn->prepare('DELETE FROM messages WHERE id = ?');
+            if ($isArchivedAction === 1 || $redirectView === 'archived') {
+                $stmt = $conn->prepare('DELETE FROM archived_messages WHERE id = ?');
+            } else {
+                $stmt = $conn->prepare('DELETE FROM messages WHERE id = ?');
+            }
             $stmt->bind_param('i', $messageId);
             $stmt->execute();
             $stmt->close();
+
             $redirectParams['status'] = 'deleted';
         }
     }
@@ -61,12 +97,6 @@ $conditions = [];
 $types = '';
 $params = [];
 
-if ($view === 'active') {
-    $conditions[] = 'is_archived = 0';
-} elseif ($view === 'archived') {
-    $conditions[] = 'is_archived = 1';
-}
-
 if ($search !== '') {
     $conditions[] = '(full_name LIKE ? OR telephone LIKE ? OR message LIKE ? OR member_visitor LIKE ?)';
     $searchTerm = '%' . $search . '%';
@@ -74,26 +104,52 @@ if ($search !== '') {
     array_push($params, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
 }
 
-$query = 'SELECT id, full_name, telephone, member_visitor, message, is_archived, archived_at, created_at FROM messages';
+$selectFields = 'id, full_name, telephone, member_visitor, message, created_at';
 
-if ($conditions !== []) {
-    $query .= ' WHERE ' . implode(' AND ', $conditions);
+if ($view === 'active') {
+    $query = 'SELECT ' . $selectFields . ', 0 AS is_archived FROM messages';
+    if ($conditions !== []) {
+        $query .= ' WHERE ' . implode(' AND ', $conditions);
+    }
+    $query .= ' ORDER BY created_at DESC';
+} elseif ($view === 'archived') {
+    $query = 'SELECT ' . $selectFields . ', 1 AS is_archived FROM archived_messages';
+    if ($conditions !== []) {
+        $query .= ' WHERE ' . implode(' AND ', $conditions);
+    }
+    $query .= ' ORDER BY created_at DESC';
+} else {
+    $baseWhere = '';
+    if ($conditions !== []) {
+        $baseWhere = ' WHERE ' . implode(' AND ', $conditions);
+    }
+
+    $query = 'SELECT ' . $selectFields . ', 0 AS is_archived FROM messages' . $baseWhere
+           . ' UNION ALL '
+           . 'SELECT ' . $selectFields . ', 1 AS is_archived FROM archived_messages' . $baseWhere
+           . ' ORDER BY created_at DESC';
 }
-
-$query .= ' ORDER BY created_at DESC';
 
 if ($types !== '') {
     $stmt = $conn->prepare($query);
-    $stmt->bind_param($types, ...$params);
+
+    if ($view === 'all') {
+        $combinedTypes = $types . $types;
+        $combinedParams = array_merge($params, $params);
+        $stmt->bind_param($combinedTypes, ...$combinedParams);
+    } else {
+        $stmt->bind_param($types, ...$params);
+    }
+
     $stmt->execute();
     $result = $stmt->get_result();
 } else {
     $result = $conn->query($query);
 }
 
-$activeCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages WHERE is_archived = 0')->fetch_assoc()['total'] ?? 0);
-$archivedCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages WHERE is_archived = 1')->fetch_assoc()['total'] ?? 0);
-$messageCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_assoc()['total'] ?? 0);
+$activeCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_assoc()['total'] ?? 0);
+$archivedCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM archived_messages')->fetch_assoc()['total'] ?? 0);
+$messageCount = $activeCount + $archivedCount;
 
 $flashMessages = [
     'archived' => 'Message archived successfully.',
@@ -191,7 +247,7 @@ $flashMessages = [
                                 $telephone = $row['telephone'] ?: 'Not provided';
                                 $memberVisitor = $row['member_visitor'] ?: 'Unspecified';
                                 $preview = mb_strimwidth($row['message'], 0, 70, '...');
-                                $isArchived = (int) $row['is_archived'] === 1;
+                                $isArchived = (int) ($row['is_archived'] ?? 0) === 1;
                                 $statusLabel = $isArchived ? 'Archived' : 'Active';
                                 ?>
                                 <tr>
@@ -233,6 +289,7 @@ $flashMessages = [
 
                                             <form method="POST" class="inline-action-form">
                                                 <input type="hidden" name="message_id" value="<?= (int) $row['id'] ?>">
+                                                <input type="hidden" name="is_archived" value="<?= $isArchived ? '1' : '0' ?>">
                                                 <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
                                                 <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
                                                 <input type="hidden" name="action" value="<?= $isArchived ? 'restore' : 'archive' ?>">
@@ -250,6 +307,7 @@ $flashMessages = [
 
                                             <form method="POST" class="inline-action-form" onsubmit="return confirm('Delete this message permanently?');">
                                                 <input type="hidden" name="message_id" value="<?= (int) $row['id'] ?>">
+                                                <input type="hidden" name="is_archived" value="<?= $isArchived ? '1' : '0' ?>">
                                                 <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
                                                 <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
                                                 <input type="hidden" name="action" value="delete">

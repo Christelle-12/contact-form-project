@@ -12,6 +12,16 @@ CREATE TABLE messages (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE archived_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  full_name VARCHAR(100) NULL,
+  telephone VARCHAR(20),
+  member_visitor VARCHAR(10),
+  message TEXT NOT NULL,
+  archived_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP NOT NULL
+);
+
 CREATE TABLE admins (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(100) NOT NULL UNIQUE,
