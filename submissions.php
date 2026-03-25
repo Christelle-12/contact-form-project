@@ -13,28 +13,93 @@ if (!isset($_SESSION['admin_id'])) {
 
 require_once 'db.php';
 
+$allowedViews = ['active', 'archived', 'all'];
+$view = $_GET['view'] ?? 'active';
+$view = in_array($view, $allowedViews, true) ? $view : 'active';
 $search = trim($_GET['search'] ?? '');
+$flash = $_GET['status'] ?? '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $messageId = (int) ($_POST['message_id'] ?? 0);
+    $action = $_POST['action'] ?? '';
+    $redirectView = $_POST['view'] ?? 'active';
+    $redirectView = in_array($redirectView, $allowedViews, true) ? $redirectView : 'active';
+    $redirectSearch = trim($_POST['search'] ?? '');
+    $redirectParams = ['view' => $redirectView];
+
+    if ($redirectSearch !== '') {
+        $redirectParams['search'] = $redirectSearch;
+    }
+
+    if ($messageId > 0) {
+        if ($action === 'archive') {
+            $stmt = $conn->prepare('UPDATE messages SET is_archived = 1, archived_at = CURRENT_TIMESTAMP WHERE id = ?');
+            $stmt->bind_param('i', $messageId);
+            $stmt->execute();
+            $stmt->close();
+            $redirectParams['status'] = 'archived';
+        } elseif ($action === 'restore') {
+            $stmt = $conn->prepare('UPDATE messages SET is_archived = 0, archived_at = NULL WHERE id = ?');
+            $stmt->bind_param('i', $messageId);
+            $stmt->execute();
+            $stmt->close();
+            $redirectParams['status'] = 'restored';
+        } elseif ($action === 'delete') {
+            $stmt = $conn->prepare('DELETE FROM messages WHERE id = ?');
+            $stmt->bind_param('i', $messageId);
+            $stmt->execute();
+            $stmt->close();
+            $redirectParams['status'] = 'deleted';
+        }
+    }
+
+    header('Location: submissions.php?' . http_build_query($redirectParams));
+    exit();
+}
+
+$conditions = [];
+$types = '';
+$params = [];
+
+if ($view === 'active') {
+    $conditions[] = 'is_archived = 0';
+} elseif ($view === 'archived') {
+    $conditions[] = 'is_archived = 1';
+}
 
 if ($search !== '') {
+    $conditions[] = '(full_name LIKE ? OR telephone LIKE ? OR message LIKE ? OR member_visitor LIKE ?)';
     $searchTerm = '%' . $search . '%';
-    $stmt = $conn->prepare(
-        'SELECT id, full_name, telephone, member_visitor, message, created_at
-         FROM messages
-         WHERE full_name LIKE ? OR telephone LIKE ? OR message LIKE ? OR member_visitor LIKE ?
-         ORDER BY created_at DESC'
-    );
-    $stmt->bind_param('ssss', $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+    $types .= 'ssss';
+    array_push($params, $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+}
+
+$query = 'SELECT id, full_name, telephone, member_visitor, message, is_archived, archived_at, created_at FROM messages';
+
+if ($conditions !== []) {
+    $query .= ' WHERE ' . implode(' AND ', $conditions);
+}
+
+$query .= ' ORDER BY created_at DESC';
+
+if ($types !== '') {
+    $stmt = $conn->prepare($query);
+    $stmt->bind_param($types, ...$params);
     $stmt->execute();
     $result = $stmt->get_result();
 } else {
-    $result = $conn->query(
-        'SELECT id, full_name, telephone, member_visitor, message, created_at
-         FROM messages
-         ORDER BY created_at DESC'
-    );
+    $result = $conn->query($query);
 }
 
-$messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_assoc()['total'] ?? 0;
+$activeCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages WHERE is_archived = 0')->fetch_assoc()['total'] ?? 0);
+$archivedCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages WHERE is_archived = 1')->fetch_assoc()['total'] ?? 0);
+$messageCount = (int) ($conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_assoc()['total'] ?? 0);
+
+$flashMessages = [
+    'archived' => 'Message archived successfully.',
+    'restored' => 'Message restored successfully.',
+    'deleted' => 'Message deleted permanently.',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -52,21 +117,40 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                 <h1>Attendee Messages</h1>
                 <p>
                     Welcome, <?= htmlspecialchars($_SESSION['admin_username'] ?? 'Admin') ?>.
-                    Review the latest messages from members and visitors below.
+                    Review, archive, or delete messages from members and visitors below.
                 </p>
             </div>
 
             <div class="dashboard-actions">
                 <div class="stat-card">
                     <span>Total messages</span>
-                    <strong><?= (int) $messageCount ?></strong>
+                    <strong><?= $messageCount ?></strong>
                 </div>
                 <a href="logout.php" class="secondary-btn compact-btn">Logout</a>
             </div>
         </header>
 
+        <?php if (isset($flashMessages[$flash])): ?>
+            <div class="alert success dashboard-alert"><?= htmlspecialchars($flashMessages[$flash]) ?></div>
+        <?php endif; ?>
+
         <section class="toolbar-card">
+            <div class="toolbar-topline">
+                <div class="filter-pills">
+                    <a href="submissions.php?view=active" class="filter-pill<?= $view === 'active' ? ' is-active' : '' ?>">
+                        Active <span><?= $activeCount ?></span>
+                    </a>
+                    <a href="submissions.php?view=archived" class="filter-pill<?= $view === 'archived' ? ' is-active' : '' ?>">
+                        Archived <span><?= $archivedCount ?></span>
+                    </a>
+                    <a href="submissions.php?view=all" class="filter-pill<?= $view === 'all' ? ' is-active' : '' ?>">
+                        All <span><?= $messageCount ?></span>
+                    </a>
+                </div>
+            </div>
+
             <form method="GET" class="search-form">
+                <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
                 <input
                     type="text"
                     name="search"
@@ -75,7 +159,7 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                 >
                 <button type="submit" class="primary-btn compact-btn">Search</button>
                 <?php if ($search !== ''): ?>
-                    <a href="submissions.php" class="secondary-btn compact-btn">Clear</a>
+                    <a href="submissions.php?view=<?= urlencode($view) ?>" class="secondary-btn compact-btn">Clear</a>
                 <?php endif; ?>
             </form>
         </section>
@@ -84,7 +168,7 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
             <?php if ($result->num_rows === 0): ?>
                 <div class="empty-state">
                     <h2>No messages found</h2>
-                    <p>When attendees submit the form, their messages will appear here.</p>
+                    <p>This view does not have any messages yet.</p>
                 </div>
             <?php else: ?>
                 <div class="table-scroll">
@@ -96,7 +180,8 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                                 <th scope="col">Phone</th>
                                 <th scope="col">Preview</th>
                                 <th scope="col">Date</th>
-                                <th scope="col" class="actions-col">View</th>
+                                <th scope="col">Status</th>
+                                <th scope="col" class="actions-col">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -106,6 +191,8 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                                 $telephone = $row['telephone'] ?: 'Not provided';
                                 $memberVisitor = $row['member_visitor'] ?: 'Unspecified';
                                 $preview = mb_strimwidth($row['message'], 0, 70, '...');
+                                $isArchived = (int) $row['is_archived'] === 1;
+                                $statusLabel = $isArchived ? 'Archived' : 'Active';
                                 ?>
                                 <tr>
                                     <td data-label="Name">
@@ -119,23 +206,65 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                                         <?= htmlspecialchars($preview) ?>
                                     </td>
                                     <td data-label="Date"><?= htmlspecialchars($row['created_at']) ?></td>
-                                    <td data-label="View" class="table-actions">
-                                        <button
-                                            type="button"
-                                            class="icon-btn"
-                                            data-open-message
-                                            data-name="<?= htmlspecialchars($fullName) ?>"
-                                            data-type="<?= htmlspecialchars($memberVisitor) ?>"
-                                            data-phone="<?= htmlspecialchars($telephone) ?>"
-                                            data-date="<?= htmlspecialchars($row['created_at']) ?>"
-                                            data-message="<?= htmlspecialchars($row['message']) ?>"
-                                            aria-label="View full message"
-                                            title="View full message"
-                                        >
-                                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M12 5c5.23 0 9.27 3.34 11 7-1.73 3.66-5.77 7-11 7S2.73 15.66 1 12c1.73-3.66 5.77-7 11-7Zm0 2C8.39 7 5.33 9.11 3.53 12 5.33 14.89 8.39 17 12 17s6.67-2.11 8.47-5C18.67 9.11 15.61 7 12 7Zm0 2.5A2.5 2.5 0 1 1 9.5 12 2.5 2.5 0 0 1 12 9.5Z"/>
-                                            </svg>
-                                        </button>
+                                    <td data-label="Status">
+                                        <span class="status-pill<?= $isArchived ? ' archived' : ' active' ?>">
+                                            <?= $statusLabel ?>
+                                        </span>
+                                    </td>
+                                    <td data-label="Actions" class="table-actions">
+                                        <div class="action-stack">
+                                            <button
+                                                type="button"
+                                                class="icon-btn"
+                                                data-open-message
+                                                data-name="<?= htmlspecialchars($fullName) ?>"
+                                                data-type="<?= htmlspecialchars($memberVisitor) ?>"
+                                                data-phone="<?= htmlspecialchars($telephone) ?>"
+                                                data-date="<?= htmlspecialchars($row['created_at']) ?>"
+                                                data-status="<?= htmlspecialchars($statusLabel) ?>"
+                                                data-message="<?= htmlspecialchars($row['message']) ?>"
+                                                aria-label="View full message"
+                                                title="View full message"
+                                            >
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M12 5c5.23 0 9.27 3.34 11 7-1.73 3.66-5.77 7-11 7S2.73 15.66 1 12c1.73-3.66 5.77-7 11-7Zm0 2C8.39 7 5.33 9.11 3.53 12 5.33 14.89 8.39 17 12 17s6.67-2.11 8.47-5C18.67 9.11 15.61 7 12 7Zm0 2.5A2.5 2.5 0 1 1 9.5 12 2.5 2.5 0 0 1 12 9.5Z"/>
+                                                </svg>
+                                            </button>
+
+                                            <form method="POST" class="inline-action-form">
+                                                <input type="hidden" name="message_id" value="<?= (int) $row['id'] ?>">
+                                                <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
+                                                <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                                                <input type="hidden" name="action" value="<?= $isArchived ? 'restore' : 'archive' ?>">
+                                                <button
+                                                    type="submit"
+                                                    class="icon-btn archive-btn"
+                                                    aria-label="<?= $isArchived ? 'Restore message' : 'Archive message' ?>"
+                                                    title="<?= $isArchived ? 'Restore message' : 'Archive message' ?>"
+                                                >
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M20 6.91V19a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6.91L5.91 5h12.18ZM12 9l-3 3h2v4h2v-4h2Zm6.24-6L20 4.76V7H4V4.76L5.76 3Z"/>
+                                                    </svg>
+                                                </button>
+                                            </form>
+
+                                            <form method="POST" class="inline-action-form" onsubmit="return confirm('Delete this message permanently?');">
+                                                <input type="hidden" name="message_id" value="<?= (int) $row['id'] ?>">
+                                                <input type="hidden" name="view" value="<?= htmlspecialchars($view) ?>">
+                                                <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
+                                                <input type="hidden" name="action" value="delete">
+                                                <button
+                                                    type="submit"
+                                                    class="icon-btn delete-btn"
+                                                    aria-label="Delete message"
+                                                    title="Delete message"
+                                                >
+                                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                        <path d="M9 3h6l1 2h5v2H3V5h5Zm1 6h2v8h-2Zm4 0h2v8h-2ZM6 9h2v8H6Zm1 12a2 2 0 0 1-2-2V8h14v11a2 2 0 0 1-2 2Z"/>
+                                                    </svg>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -172,6 +301,10 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                 <span>Received</span>
                 <strong id="modalDate"></strong>
             </div>
+            <div>
+                <span>Status</span>
+                <strong id="modalStatus">Active</strong>
+            </div>
         </div>
 
         <div class="modal-message-box">
@@ -193,6 +326,7 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
             const modalType = document.getElementById('modalType');
             const modalPhone = document.getElementById('modalPhone');
             const modalDate = document.getElementById('modalDate');
+            const modalStatus = document.getElementById('modalStatus');
             const modalMessage = document.getElementById('modalMessage');
 
             openButtons.forEach(function (button) {
@@ -201,6 +335,7 @@ $messageCount = $conn->query('SELECT COUNT(*) AS total FROM messages')->fetch_as
                     modalType.textContent = button.dataset.type || 'Unspecified';
                     modalPhone.textContent = button.dataset.phone || 'Not provided';
                     modalDate.textContent = button.dataset.date || '';
+                    modalStatus.textContent = button.dataset.status || 'Active';
                     modalMessage.textContent = button.dataset.message || '';
                     modal.showModal();
                 });

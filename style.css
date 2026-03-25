@@ -417,6 +417,63 @@ textarea {
     margin-top: 16px;
 }
 
+.dashboard-alert {
+    margin-top: 16px;
+    margin-bottom: 0;
+}
+
+.toolbar-topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.filter-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(88, 62, 39, 0.14);
+    background: rgba(255, 255, 255, 0.76);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 0.84rem;
+    font-weight: 700;
+}
+
+.filter-pill span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(15, 108, 90, 0.1);
+    color: var(--brand-deep);
+    font-size: 0.74rem;
+}
+
+.filter-pill.is-active {
+    background: var(--brand);
+    color: #fff;
+    border-color: var(--brand);
+}
+
+.filter-pill.is-active span {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+}
+
 .search-form {
     display: flex;
     gap: 10px;
@@ -480,6 +537,27 @@ textarea {
     letter-spacing: 0.06em;
 }
 
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.status-pill.active {
+    background: rgba(29, 122, 82, 0.12);
+    color: var(--success);
+}
+
+.status-pill.archived {
+    background: rgba(136, 113, 90, 0.14);
+    color: #6b5440;
+}
+
 .message-preview-cell {
     max-width: 320px;
     color: var(--muted);
@@ -492,8 +570,19 @@ textarea {
     text-align: center;
 }
 
+.action-stack {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.inline-action-form {
+    margin: 0;
+}
+
 .actions-col {
-    width: 84px;
+    width: 164px;
 }
 
 .icon-btn {
@@ -514,6 +603,14 @@ textarea {
     width: 18px;
     height: 18px;
     fill: currentColor;
+}
+
+.archive-btn {
+    color: #7a4a14;
+}
+
+.delete-btn {
+    color: var(--danger);
 }
 
 .empty-state {
@@ -558,7 +655,7 @@ textarea {
 
 .modal-meta-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
     padding: 16px 22px;
 }
@@ -655,6 +752,10 @@ textarea {
         text-align: left;
     }
 
+    .action-stack {
+        justify-content: flex-start;
+    }
+
     .message-preview-cell {
         max-width: 100%;
         white-space: normal;
@@ -699,6 +800,11 @@ textarea {
     }
 
     .hero-topbar {
+        align-items: stretch;
+    }
+
+    .toolbar-topline {
+        flex-direction: column;
         align-items: stretch;
     }
 

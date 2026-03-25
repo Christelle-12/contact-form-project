@@ -7,6 +7,8 @@ CREATE TABLE messages (
   telephone VARCHAR(20),
   member_visitor VARCHAR(10),
   message TEXT NOT NULL,
+  is_archived TINYINT(1) NOT NULL DEFAULT 0,
+  archived_at TIMESTAMP NULL DEFAULT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
