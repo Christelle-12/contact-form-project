@@ -8,7 +8,7 @@ $isError = $status === 'error';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Church Message Desk</title>
+    <title>FGT TORUN CHURCH BOX</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="public-page">
@@ -16,7 +16,7 @@ $isError = $status === 'error';
         <section class="hero-card">
             <div class="hero-copy">
                 <div class="hero-topbar">
-                    <span class="eyebrow">Church Care Desk</span>
+                    <span class="eyebrow">FGT TORUN CHURCH BOX</span>
                     <a href="login.php" class="secondary-btn compact-btn">Admin Login</a>
                 </div>
                 <h1>Share a prayer request, suggestion, or private note.</h1>

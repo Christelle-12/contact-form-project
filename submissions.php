@@ -203,6 +203,12 @@ $flashMessages = [
                         All <span><?= $messageCount ?></span>
                     </a>
                 </div>
+
+                <div class="toolbar-actions">
+                    <a href="export.php?<?= http_build_query(['view' => $view, 'search' => $search]) ?>" class="primary-btn compact-btn" download>
+                        Download Export
+                    </a>
+                </div>
             </div>
 
             <form method="GET" class="search-form">
